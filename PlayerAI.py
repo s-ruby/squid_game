@@ -27,31 +27,49 @@ class PlayerAI(BaseAI):
 
     def setPlayerNum(self, num):
         self.player_num = num
-        
-    def getValidMoves(self, pos, avail):
-        moves = []
-        start1 = min(max(pos[0]-1, 0), 8)
-        end1 = min(max(pos[0]+2, 0), 8) 
-        start2 = min(max(pos[1]-1, 0), 8)
-        end2 = min(max(pos[1]+2, 0), 8) 
-        for i in range(start1, end1):
-            for j in range(start2, end2):
-                if (i, j) != pos and (i, j) in avail:
-                    moves.append((i, j))
-        return moves
     
-    def heuristic(self, grid: Grid):
-        """the difference between the current number of moves Player (You) can make 
-        and the current number of moves the opponent can make."""
-        avail = grid.getAvailableCells()
+    def heuristic(self, pos, grid: Grid):
+        """One Cell Lookahead Score (OCLS): The difference between 
+        the Player's sum of possible moves looking one step ahead and the
+        Opponent's sum of possible moves looking one step ahead"""
         opp_pos = grid.find(3 - self.player_num)
-        opp_moves = len(self.getValidMoves(opp_pos, avail))
-        p_moves = len(self.getValidMoves(self.getPosition(), avail))
-        print(f"improved score: {p_moves-opp_moves}")
-        print(f"aggressive is: {p_moves - (2*opp_moves)}")
+        opp_moves = grid.get_neighbors(opp_pos, only_available=True)
+        opp_total = 0
+        for move in opp_moves:
+            opp_total += len(grid.get_neighbors(opp_pos, only_available=True))
+        p_total = 0
+        p_moves = grid.get_neighbors(self.getPosition(), only_available=True)
+        for move in p_moves:
+            p_total += len(grid.get_neighbors(opp_pos, only_available=True))
+        return p_total-opp_total
+    
+    def terminal_test(self, state, grid):
+        if len(grid.get_neighbors(state, only_available=True)) > 0: 
+            return False
+        else:
+            return True
+    
+    def minimize(self, state, grid, depth):
+        if self.terminal_test(state, grid) or depth == 0:
+            return None, self.heuristic(state, grid)
+        minChild, minUtility = None, np.inf
+        for child in grid.get_neighbors(self.getPosition(), only_available = True):
+            c, utility = self.maximize(child, grid, depth -1)
+            if utility  < minUtility:
+                minChild, minUtility = child, utility
+        return minChild, minUtility
+    
+    def maximize(self, state, grid, depth):
+        if self.terminal_test(state, grid) or depth == 0:
+            return None, self.heuristic(state, grid)
+        maxChild, maxUtility = None, np.NINF
+        for child in grid.get_neighbors(state, only_available = True):
+            c, utility = self.minimize(child, grid, depth -1 )
+            if utility > maxUtility:
+                maxChild, maxUtility = child, utility
+        return maxChild, maxUtility
+            
         
-        
-                    
 
     def getMove(self, grid: Grid) -> tuple:
         """ 
@@ -67,12 +85,9 @@ class PlayerAI(BaseAI):
         You may adjust the input variables as you wish (though it is not necessary). Output has to be (x,y) coordinates.
         
         """
-        self.heuristic(grid.clone())
         cur = self.getPosition()
-        avail = grid.getAvailableCells()
-        options = self.getValidMoves(cur, avail)
-        r = random.randint(0, len(options)-1)
-        return options[r]
+        pos, utility = self.maximize(cur, grid, 5)
+        return pos
 
     def getTrap(self, grid : Grid) -> tuple:
         """ 
@@ -88,7 +103,7 @@ class PlayerAI(BaseAI):
         You may adjust the input variables as you wish (though it is not necessary). Output has to be (x,y) coordinates.
         
         """
-        options = grid.getAvailableCells()
+        options = grid.get_neighbors(grid.find(3 - self.player_num), only_available=True)
         r = random.randint(0, len(options)-1)
         return options[r]
         

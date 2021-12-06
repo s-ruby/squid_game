@@ -41,7 +41,7 @@ class PlayerAI(BaseAI):
         p_moves = grid.get_neighbors(self.getPosition(), only_available=True)
         for move in p_moves:
             p_total += len(grid.get_neighbors(opp_pos, only_available=True))
-        return p_total-opp_total
+        return max((p_total-opp_total), (len(opp_moves)- len(p_moves)))
     
     def terminal_test(self, state, grid):
         if len(grid.get_neighbors(state, only_available=True)) > 0: 
@@ -49,25 +49,27 @@ class PlayerAI(BaseAI):
         else:
             return True
     
-    def minimize(self, state, grid, depth):
+    def minimize(self, state, grid, depth, alpha, beta):
         if self.terminal_test(state, grid) or depth == 0:
             return None, self.heuristic(state, grid)
-        minChild, minUtility = None, np.inf
+        child, utility = None, np.inf
         for child in grid.get_neighbors(self.getPosition(), only_available = True):
-            c, utility = self.maximize(child, grid, depth -1)
-            if utility  < minUtility:
-                minChild, minUtility = child, utility
-        return minChild, minUtility
+            c, utility = self.maximize(child, grid, depth -1, alpha, beta)
+            if utility  <= alpha:
+                break
+            beta = min(beta, utility)
+        return child, utility
     
-    def maximize(self, state, grid, depth):
+    def maximize(self, state, grid, depth, alpha, beta):
         if self.terminal_test(state, grid) or depth == 0:
             return None, self.heuristic(state, grid)
-        maxChild, maxUtility = None, np.NINF
+        child, utility = None, np.NINF
         for child in grid.get_neighbors(state, only_available = True):
-            c, utility = self.minimize(child, grid, depth -1 )
-            if utility > maxUtility:
-                maxChild, maxUtility = child, utility
-        return maxChild, maxUtility
+            c, utility = self.minimize(child, grid, depth -1, alpha, beta)
+            if utility >= beta:
+                break
+            alpha = max(alpha, utility)
+        return child, utility
             
         
 
@@ -86,7 +88,8 @@ class PlayerAI(BaseAI):
         
         """
         cur = self.getPosition()
-        pos, utility = self.maximize(cur, grid, 5)
+        pos, utility = self.maximize(cur, grid, 5, np.NINF, np.inf)
+        print(pos, utility)
         return pos
 
     def getTrap(self, grid : Grid) -> tuple:
@@ -105,7 +108,10 @@ class PlayerAI(BaseAI):
         """
         options = grid.get_neighbors(grid.find(3 - self.player_num), only_available=True)
         r = random.randint(0, len(options)-1)
-        return options[r]
+        if self.getPosition() == options[r]:
+            return None
+        else:
+            return options[r]
         
         
 

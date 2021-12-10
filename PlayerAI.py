@@ -27,6 +27,13 @@ class PlayerAI(BaseAI):
 
     def setPlayerNum(self, num):
         self.player_num = num
+        
+    def manhattanDistance(self, pos, target):
+        return abs(pos[0]-target[0]) + abs(pos[1]-target[1])
+    
+    def chance(self, pos, target):
+        return 1 - 0.05 * (self.manhattanDistance(pos, target)-1)
+        
     
     def heuristic(self, pos, grid: Grid):
         """One Cell Lookahead Score (OCLS): The difference between 
@@ -41,7 +48,7 @@ class PlayerAI(BaseAI):
         p_moves = grid.get_neighbors(self.getPosition(), only_available=True)
         for move in p_moves:
             p_total += len(grid.get_neighbors(opp_pos, only_available=True))
-        return max((p_total-opp_total), (len(opp_moves)- len(p_moves)))
+        return (p_total-(2*opp_total))+1 * len(p_moves)-len(opp_moves)
     
     def terminal_test(self, state, grid):
         if len(grid.get_neighbors(state, only_available=True)) > 0: 
@@ -50,28 +57,43 @@ class PlayerAI(BaseAI):
             return True
     
     def minimize(self, state, grid, depth, alpha, beta):
+        op_pos = grid.find(3 - self.player_num)
         if self.terminal_test(state, grid) or depth == 0:
             return None, self.heuristic(state, grid)
         child, utility = None, np.inf
         for child in grid.get_neighbors(self.getPosition(), only_available = True):
+            chance = self.chance(op_pos, child)
             c, utility = self.maximize(child, grid, depth -1, alpha, beta)
-            if utility  <= alpha:
+            utility = chance * utility
+            if utility <= alpha:
                 break
             beta = min(beta, utility)
         return child, utility
     
+    def best_moves(self, grid, state, depth):
+        all_moves = grid.get_neighbors(state, only_available = True)
+        is_scores = {}
+        for move in all_moves:
+            is_scores[len(grid.get_neighbors(move, only_available=True))] = move
+        best_moves = []
+        for score in sorted(is_scores):
+            best_moves.append(is_scores[score])
+        return best_moves
+            
+
     def maximize(self, state, grid, depth, alpha, beta):
         if self.terminal_test(state, grid) or depth == 0:
             return None, self.heuristic(state, grid)
         child, utility = None, np.NINF
-        for child in grid.get_neighbors(state, only_available = True):
+               
+        # for child in grid.get_neighbors(state, only_available = True):
+        for child in self.best_moves(grid, state, depth):
             c, utility = self.minimize(child, grid, depth -1, alpha, beta)
             if utility >= beta:
                 break
             alpha = max(alpha, utility)
         return child, utility
             
-        
 
     def getMove(self, grid: Grid) -> tuple:
         """ 
@@ -91,27 +113,38 @@ class PlayerAI(BaseAI):
         pos, utility = self.maximize(cur, grid, 5, np.NINF, np.inf)
         print(pos, utility)
         return pos
+    
+    def IS(self, grid : Grid, player_num):
+    
+        # find all available moves by Player
+        player_moves    = grid.get_neighbors(grid.find(player_num), only_available = True)
+        
+        # find all available moves by Opponent
+        opp_moves       = grid.get_neighbors(grid.find(3 - player_num), only_available = True)
+        
+        return len(player_moves) - len(opp_moves)
 
     def getTrap(self, grid : Grid) -> tuple:
-        """ 
-        YOUR CODE GOES HERE
+        # find players
+        opponent = grid.find(3 - self.player_num)
 
-        The function should return a tuple of (x,y) coordinates to which the player *WANTS* to throw the trap.
-        
-        It should be the result of the ExpectiMinimax algorithm, maximizing over the Opponent's *Move* actions, 
-        taking into account the probabilities of it landing in the positions you want. 
-        
-        Note that you are not required to account for the probabilities of it landing in a different cell.
+        # find all available cells in the grid
+        available_neighbors = grid.get_neighbors(opponent, only_available = True)
 
-        You may adjust the input variables as you wish (though it is not necessary). Output has to be (x,y) coordinates.
-        
-        """
-        options = grid.get_neighbors(grid.find(3 - self.player_num), only_available=True)
-        r = random.randint(0, len(options)-1)
-        if self.getPosition() == options[r]:
-            return None
-        else:
-            return options[r]
+        # edge case - if there are no available cell around opponent, then 
+        # player constitutes last trap and will win. throwing randomly.
+        if not available_neighbors:
+            return random.choice(grid.getAvailableCells())
+            
+        states = [grid.clone().trap(cell) for cell in available_neighbors]
+
+        # find trap that minimizes opponent's moves
+        is_scores = np.array([self.IS(state, 3 - self.player_num) for state in states])
+
+        # throw to one of the available cells randomly
+        trap = available_neighbors[np.argmin(is_scores)] 
+    
+        return trap
         
         
 

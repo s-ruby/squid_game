@@ -55,14 +55,17 @@ class Game():
         # check if Player has won
         # find available neighbors of player 1
         opponent_neighbors = self.grid.get_neighbors(self.computerAI.getPosition(), only_available=True)
+        player_neighbors = self.grid.get_neighbors(self.playerAI.getPosition(), only_available=True)
         # if none - win
         if len(opponent_neighbors) == 0:
             self.over = True
-            return 1
+            if turn == 1 and len(player_neighbors) == 0:
+                return 2
+            else:
+                return 1
 
         # check if Opponent has won
-        player_neighbors = self.grid.get_neighbors(self.playerAI.getPosition(), only_available=True)
-
+        
         if len(player_neighbors) == 0:
             self.over = True
             return 2
@@ -238,6 +241,15 @@ def main():
         print("Player 1 wins!")
     elif result == 2:
         print("Player 1 loses!")
+    return result
 
 if __name__ == "__main__":
-    main()
+    scores = {"player1": 0, "computer": 0}
+    for i in range(20):
+        result = main()
+        if result == 1:
+            scores["player1"] += 1
+        else:
+            scores["computer"] += 1
+        print(scores)
+        

@@ -41,14 +41,14 @@ class PlayerAI(BaseAI):
         Opponent's sum of possible moves looking one step ahead"""
         opp_pos = grid.find(3 - self.player_num)
         opp_moves = grid.get_neighbors(opp_pos, only_available=True)
-        opp_total = 0
-        for move in opp_moves:
-            opp_total += len(grid.get_neighbors(opp_pos, only_available=True))
-        p_total = 0
+        # opp_total = 0
+        # for move in opp_moves:
+        #     opp_total += len(grid.get_neighbors(opp_pos, only_available=True))
+        # p_total = 0
         p_moves = grid.get_neighbors(self.getPosition(), only_available=True)
-        for move in p_moves:
-            p_total += len(grid.get_neighbors(opp_pos, only_available=True))
-        return (p_total-(2*opp_total))+1 * len(p_moves)-len(opp_moves)
+        # for move in p_moves:
+        #     p_total += len(grid.get_neighbors(opp_pos, only_available=True))
+        return 2*len(p_moves)-len(opp_moves)
     
     def terminal_test(self, state, grid):
         if len(grid.get_neighbors(state, only_available=True)) > 0: 
@@ -61,7 +61,7 @@ class PlayerAI(BaseAI):
         if self.terminal_test(state, grid) or depth == 0:
             return None, self.heuristic(state, grid)
         child, utility = None, np.inf
-        for child in grid.get_neighbors(self.getPosition(), only_available = True):
+        for child in self.best_moves(grid, self.getPosition()):
             chance = self.chance(op_pos, child)
             c, utility = self.maximize(child, grid, depth -1, alpha, beta)
             utility = chance * utility
@@ -70,14 +70,14 @@ class PlayerAI(BaseAI):
             beta = min(beta, utility)
         return child, utility
     
-    def best_moves(self, grid, state, depth):
+    def best_moves(self, grid, state):
         all_moves = grid.get_neighbors(state, only_available = True)
-        is_scores = {}
+        scores = {}
         for move in all_moves:
-            is_scores[len(grid.get_neighbors(move, only_available=True))] = move
+            scores[len(grid.get_neighbors(move, only_available=True))] = move
         best_moves = []
-        for score in sorted(is_scores):
-            best_moves.append(is_scores[score])
+        for score in sorted(scores):
+            best_moves.append(scores[score])
         return best_moves
             
 
@@ -85,9 +85,7 @@ class PlayerAI(BaseAI):
         if self.terminal_test(state, grid) or depth == 0:
             return None, self.heuristic(state, grid)
         child, utility = None, np.NINF
-               
-        # for child in grid.get_neighbors(state, only_available = True):
-        for child in self.best_moves(grid, state, depth):
+        for child in self.best_moves(grid, state):
             c, utility = self.minimize(child, grid, depth -1, alpha, beta)
             if utility >= beta:
                 break
@@ -111,7 +109,6 @@ class PlayerAI(BaseAI):
         """
         cur = self.getPosition()
         pos, utility = self.maximize(cur, grid, 5, np.NINF, np.inf)
-        print(pos, utility)
         return pos
     
     def IS(self, grid : Grid, player_num):

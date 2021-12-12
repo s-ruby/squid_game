@@ -126,14 +126,16 @@ class PlayerAI(BaseAI):
         # edge case - if there are no available cell around opponent, then
         # player constitutes last trap and will win. throwing randomly.
         start_time = time.time()
-        depth = 6
+        depth = 7
 
         move, trap, child, utility = self.maximizeTrap(start_time, depth, grid, -sys.maxsize - 1,
                                                        sys.maxsize)
 
         print(trap)
         end_time = time.time()
-        print(end_time - start_time, " seconds")
+        if trap is None:
+            available = grid.getAvailableCells()
+            return random.choice(available)
         return trap
 
     def minimizeTrap(self, start, depth, grid: Grid, alpha, beta):
@@ -142,24 +144,14 @@ class PlayerAI(BaseAI):
         player = grid.find(self.player_num)
         available_moves = self.bestMovesTrap(grid.get_neighbors(opponent, only_available=True), grid)
         available_player_moves = grid.get_neighbors(player, only_available=True)
-        min_child = None
-        min_move = None
-        min_trap = None
+        min_child = min_move = min_trap = None
         min_utility = sys.maxsize
 
-        if len(available_moves) == 0:
-            utility = len(available_player_moves) - len(available_moves)
-            return None, None, grid, utility
-        if len(available_player_moves) == 0:
-            utility = len(available_player_moves) - len(available_moves)
-            return None, None, grid, utility
-        now = time.time()
-        if (now - start) >= 2.4:
-            utility = len(available_player_moves) - len(available_moves)
-            return None, None, grid, utility
-
-        if depth == 0:
-            utility = len(available_player_moves) - len(available_moves)
+        move_num = len(available_moves)
+        play_num = len(available_player_moves)
+        now = time.time() - start
+        if move_num == 0 or play_num == 0 or now >= 2.4 or current_depth == 0:
+            utility = self.calculateUtility(len(available_player_moves), len(available_moves))
             return None, None, grid, utility
 
         for i in available_moves:
@@ -194,29 +186,18 @@ class PlayerAI(BaseAI):
         opponent = grid.find(3 - self.player_num)
         player = grid.find(self.player_num)
         available_moves = self.bestMovesTrap(grid.get_neighbors(player, only_available=True), grid)
-        # available_moves = grid.get_neighbors(player, only_available=True)
         available_opponent_moves = grid.get_neighbors(opponent, only_available=True)
-        max_child = None
-        max_move = None
-        max_trap = None
+        max_child = max_move = max_trap = None
         max_utility = -sys.maxsize - 1
 
-        if len(available_moves) == 0:
-            utility = len(available_moves) - len(available_opponent_moves)
-            return None, None, grid, utility
-        if len(available_opponent_moves) == 0:
-            utility = len(available_moves) - len(available_opponent_moves)
-            return None, None, grid, utility
-        now = time.time()
-        if (now - start) >= 2.4:
-            utility = len(available_moves) - len(available_opponent_moves)
-            return None, None, grid, utility
-        if depth == 0:
-            utility = len(available_moves) - len(available_opponent_moves)
+        move_num = len(available_moves)
+        opp_num = len(available_opponent_moves)
+        now = time.time() - start
+        if move_num == 0 or opp_num == 0 or now >= 2.4 or current_depth == 0:
+            utility = self.calculateUtility(len(available_moves), len(available_opponent_moves))
             return None, None, grid, utility
 
-        if current_depth == 5:
-            print(self.getPosition())
+        if current_depth == 6:
             temp_grid = grid.clone()
             available_traps = self.bestMovesTrap(temp_grid.get_neighbors(opponent, only_available=True), temp_grid)
             available_traps.reverse()
@@ -291,12 +272,17 @@ class PlayerAI(BaseAI):
         return best
 
     def chanceTrap(self, player, trap):
-        x = abs(player[0]-trap[0])
-        y = abs(player[1]-trap[1])
+        x = abs(player[0] - trap[0])
+        y = abs(player[1] - trap[1])
         manhattan = x + y
         p = 1 - 0.05 * (manhattan - 1)
 
         return p
+
+    def calculateUtility(self, player, opponent):
+        utility = 2 * player - 1.5 * opponent
+
+        return utility
         
         
 

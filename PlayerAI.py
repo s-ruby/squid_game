@@ -41,14 +41,14 @@ class PlayerAI(BaseAI):
         Opponent's sum of possible moves looking one step ahead"""
         opp_pos = grid.find(3 - self.player_num)
         opp_moves = grid.get_neighbors(opp_pos, only_available=True)
-        # opp_total = 0
-        # for move in opp_moves:
-        #     opp_total += len(grid.get_neighbors(opp_pos, only_available=True))
-        # p_total = 0
+        opp_total = 0
+        for move in opp_moves:
+            opp_total += len(grid.get_neighbors(opp_pos, only_available=True))
+        p_total = 0
         p_moves = grid.get_neighbors(self.getPosition(), only_available=True)
-        # for move in p_moves:
-        #     p_total += len(grid.get_neighbors(opp_pos, only_available=True))
-        return 2*len(p_moves)-len(opp_moves)
+        for move in p_moves:
+            p_total += len(grid.get_neighbors(opp_pos, only_available=True))
+        return 2*len(p_moves)-len(opp_moves) + (p_total - opp_total)
     
     def terminal_test(self, state, grid):
         if len(grid.get_neighbors(state, only_available=True)) > 0: 
@@ -63,7 +63,9 @@ class PlayerAI(BaseAI):
         child, utility = None, np.inf
         for child in self.best_moves(grid, self.getPosition()):
             chance = self.chance(op_pos, child)
-            c, utility = self.maximize(child, grid, depth -1, alpha, beta)
+            temp_grid = grid.clone()
+            temp_grid = temp_grid.move(child, self.player_num)
+            c, utility = self.maximize(child, temp_grid, depth -1, alpha, beta)
             utility = chance * utility
             if utility <= alpha:
                 break
@@ -86,7 +88,9 @@ class PlayerAI(BaseAI):
             return None, self.heuristic(state, grid)
         child, utility = None, np.NINF
         for child in self.best_moves(grid, state):
-            c, utility = self.minimize(child, grid, depth -1, alpha, beta)
+            temp_grid = grid.clone()
+            temp_grid = temp_grid.move(child, self.player_num)
+            c, utility = self.minimize(child, temp_grid, depth -1, alpha, beta)
             if utility >= beta:
                 break
             alpha = max(alpha, utility)
@@ -108,26 +112,17 @@ class PlayerAI(BaseAI):
         
         """
         cur = self.getPosition()
-        pos, utility = self.maximize(cur, grid, 5, np.NINF, np.inf)
+        pos, utility = self.maximize(cur, grid, 6, np.NINF, np.inf)
         return pos
-    
-    def IS(self, grid : Grid, player_num):
-    
-        # find all available moves by Player
-        player_moves    = grid.get_neighbors(grid.find(player_num), only_available = True)
-        
-        # find all available moves by Opponent
-        opp_moves       = grid.get_neighbors(grid.find(3 - player_num), only_available = True)
-        
-        return len(player_moves) - len(opp_moves)
 
-        def getTrap(self, grid: Grid) -> tuple:
+
+    def getTrap(self, grid: Grid) -> tuple:
         # find players
         opponent = grid.find(3 - self.player_num)
 
         # find all available cells in the grid
-        available_neighbors = grid.get_neighbors(opponent, only_available=True)
-
+        available_neighbors = grid.get_neighbors(opponent, only_available=True) 
+        
         # edge case - if there are no available cell around opponent, then
         # player constitutes last trap and will win. throwing randomly.
         start_time = time.time()

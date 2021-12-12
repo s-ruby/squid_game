@@ -251,5 +251,6 @@ if __name__ == "__main__":
             scores["player1"] += 1
         else:
             scores["computer"] += 1
+        pause = input("Continue?")
         print(scores)
         

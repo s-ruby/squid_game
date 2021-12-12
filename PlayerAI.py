@@ -116,12 +116,13 @@ class PlayerAI(BaseAI):
         return pos
 
     def getTrap(self, grid: Grid) -> tuple:
+
         # find players
         opponent = grid.find(3 - self.player_num)
 
         # find all available cells in the grid
-        available_neighbors = grid.get_neighbors(opponent, only_available=True) 
-        
+        available_neighbors = grid.get_neighbors(opponent, only_available=True)
+
         # edge case - if there are no available cell around opponent, then
         # player constitutes last trap and will win. throwing randomly.
         start_time = time.time()
@@ -130,6 +131,7 @@ class PlayerAI(BaseAI):
         move, trap, child, utility = self.maximizeTrap(start_time, depth, grid, -sys.maxsize - 1,
                                                        sys.maxsize)
 
+        print(trap)
         end_time = time.time()
         print(end_time - start_time, " seconds")
         return trap
@@ -213,7 +215,8 @@ class PlayerAI(BaseAI):
             utility = len(available_moves) - len(available_opponent_moves)
             return None, None, grid, utility
 
-        if depth == 5:
+        if current_depth == 5:
+            print(self.getPosition())
             temp_grid = grid.clone()
             available_traps = self.bestMovesTrap(temp_grid.get_neighbors(opponent, only_available=True), temp_grid)
             available_traps.reverse()
@@ -224,6 +227,8 @@ class PlayerAI(BaseAI):
                     temp_grid = temp_grid.trap(j)
 
                     move, trap, child, utility = self.minimizeTrap(start, current_depth, temp_grid, alpha, beta)
+                    probability = self.chanceTrap(self.getPosition(), j)
+                    utility = utility * probability
 
                     if utility > max_utility:
                         max_utility = utility
@@ -251,6 +256,9 @@ class PlayerAI(BaseAI):
                         temp_grid = temp_grid.trap(j)
 
                         move, trap, child, utility = self.minimizeTrap(start, current_depth, temp_grid, alpha, beta)
+                        if trap:
+                            probability = self.chanceTrap(self.getPosition(), j)
+                            utility = utility * probability
 
                         if utility > max_utility:
                             max_utility = utility
@@ -281,6 +289,14 @@ class PlayerAI(BaseAI):
                         best_score.insert(j, score)
 
         return best
+
+    def chanceTrap(self, player, trap):
+        x = abs(player[0]-trap[0])
+        y = abs(player[1]-trap[1])
+        manhattan = x + y
+        p = 1 - 0.05 * (manhattan - 1)
+
+        return p
         
         
 

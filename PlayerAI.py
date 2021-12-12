@@ -115,7 +115,6 @@ class PlayerAI(BaseAI):
         pos, utility = self.maximize(cur, grid, 6, np.NINF, np.inf)
         return pos
 
-
     def getTrap(self, grid: Grid) -> tuple:
         # find players
         opponent = grid.find(3 - self.player_num)

@@ -124,7 +124,7 @@ class PlayerAI(BaseAI):
         
         return len(player_moves) - len(opp_moves)
 
-    def getTrap(self, grid: Grid) -> tuple:
+        def getTrap(self, grid: Grid) -> tuple:
         # find players
         opponent = grid.find(3 - self.player_num)
 
@@ -222,15 +222,14 @@ class PlayerAI(BaseAI):
             utility = len(available_moves) - len(available_opponent_moves)
             return None, None, grid, utility
 
-        for i in available_moves:
+        if depth == 5:
             temp_grid = grid.clone()
-            temp_grid = temp_grid.move(i, self.player_num)
             available_traps = self.bestMovesTrap(temp_grid.get_neighbors(opponent, only_available=True), temp_grid)
             available_traps.reverse()
             if len(available_traps) == 0:
                 available_traps = temp_grid.getAvailableCells()
             for j in available_traps:
-                if i != j:
+                if self.getPosition() != j:
                     temp_grid = temp_grid.trap(j)
 
                     move, trap, child, utility = self.minimizeTrap(start, current_depth, temp_grid, alpha, beta)
@@ -238,7 +237,7 @@ class PlayerAI(BaseAI):
                     if utility > max_utility:
                         max_utility = utility
                         max_child = child
-                        max_move = i
+                        max_move = self.getPosition()
                         max_trap = j
 
                     if max_utility >= beta:
@@ -247,7 +246,34 @@ class PlayerAI(BaseAI):
                     if max_utility > alpha:
                         alpha = max_utility
 
-        return max_move, max_trap, max_child, max_utility
+            return max_move, max_trap, max_child, max_utility
+        else:
+            for i in available_moves:
+                temp_grid = grid.clone()
+                temp_grid = temp_grid.move(i, self.player_num)
+                available_traps = self.bestMovesTrap(temp_grid.get_neighbors(opponent, only_available=True), temp_grid)
+                available_traps.reverse()
+                if len(available_traps) == 0:
+                    available_traps = temp_grid.getAvailableCells()
+                for j in available_traps:
+                    if i != j:
+                        temp_grid = temp_grid.trap(j)
+
+                        move, trap, child, utility = self.minimizeTrap(start, current_depth, temp_grid, alpha, beta)
+
+                        if utility > max_utility:
+                            max_utility = utility
+                            max_child = child
+                            max_move = i
+                            max_trap = j
+
+                        if max_utility >= beta:
+                            break
+
+                        if max_utility > alpha:
+                            alpha = max_utility
+
+            return max_move, max_trap, max_child, max_utility
 
     def bestMovesTrap(self, available, grid):
         best = []

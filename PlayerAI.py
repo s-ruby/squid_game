@@ -124,7 +124,7 @@ class PlayerAI(BaseAI):
         
         return len(player_moves) - len(opp_moves)
 
-        def getTrap(self, grid: Grid) -> tuple:
+    def getTrap(self, grid: Grid) -> tuple:
         # find players
         opponent = grid.find(3 - self.player_num)
 
